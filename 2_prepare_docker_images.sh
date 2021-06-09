@@ -8,7 +8,7 @@ set -euo pipefail
 main() {
   if [[ "${PLATFORM}" = "openshift" ]]; then
     set +x
-    docker login -u _ -p $(oc whoami -t) $DOCKER_REGISTRY_PATH
+    podman login -u _ -p $(oc whoami -t) $DOCKER_REGISTRY_PATH --tls-verify=false
     set -x
   fi
 
@@ -34,38 +34,38 @@ prepare_conjur_appliance_image() {
   conjur_appliance_image=$(platform_image conjur-appliance)
 
   # Try to pull the image if we can
-  docker pull $CONJUR_APPLIANCE_IMAGE || true
-  docker tag $CONJUR_APPLIANCE_IMAGE $conjur_appliance_image
+  podman pull $CONJUR_APPLIANCE_IMAGE --tls-verify=false || true
+  podman tag $CONJUR_APPLIANCE_IMAGE $conjur_appliance_image
 
   if [ ! is_minienv ] || [ "${DEV}" = "false" ] ; then
-    docker push $conjur_appliance_image
+    podman push $conjur_appliance_image --tls-verify=false
   fi
 }
 
 prepare_conjur_cli_image() {
   announce "Pulling and pushing Conjur CLI image."
 
-  docker pull cyberark/conjur-cli:$CONJUR_VERSION-latest
-  docker tag cyberark/conjur-cli:$CONJUR_VERSION-latest conjur-cli:$CONJUR_NAMESPACE_NAME
+  podman pull cyberark/conjur-cli:$CONJUR_VERSION-latest --tls-verify=false
+  podman tag cyberark/conjur-cli:$CONJUR_VERSION-latest conjur-cli:$CONJUR_NAMESPACE_NAME
 
   cli_app_image=$(platform_image conjur-cli)
-  docker tag conjur-cli:$CONJUR_NAMESPACE_NAME $cli_app_image
+  podman tag conjur-cli:$CONJUR_NAMESPACE_NAME $cli_app_image
 
   if [ ! is_minienv ] || [ "${DEV}" = "false" ]; then
-    docker push $cli_app_image
+    podman push $cli_app_image --tls-verify=false
   fi
 }
 
 prepare_seed_fetcher_image() {
   announce "Pulling and pushing seed-fetcher image."
 
-  docker pull $SEEDFETCHER_IMAGE
+  podman pull $SEEDFETCHER_IMAGE --tls-verify=false
 
   seedfetcher_image=$(platform_image seed-fetcher)
-  docker tag $SEEDFETCHER_IMAGE $seedfetcher_image
+  podman tag $SEEDFETCHER_IMAGE $seedfetcher_image
 
   if [ ! is_minienv ] || [ "${DEV}" = "false" ]; then
-    docker push $seedfetcher_image
+    podman push $seedfetcher_image --tls-verify=false
   fi
 }
 
@@ -76,16 +76,16 @@ prepare_conjur_oss_cluster() {
   conjur_oss_src_image="${LOCAL_CONJUR_IMAGE:-}"
   if [[ -z "$conjur_oss_src_image" ]]; then
     conjur_oss_src_image="cyberark/conjur:latest"
-    docker pull $conjur_oss_src_image
+    podman pull $conjur_oss_src_image --tls-verify=false
   fi
 
   conjur_oss_dest_image=$(platform_image "conjur")
   echo "Tagging Conjur image $conjur_oss_src_image as $conjur_oss_dest_image"
-  docker tag "$conjur_oss_src_image" "$conjur_oss_dest_image"
+  podman tag "$conjur_oss_src_image" "$conjur_oss_dest_image"
 
   if [ "${DEV}" = "false" ]; then
     echo "Pushing Conjur image ${conjur_oss_dest_image} to repo..."
-    docker push "$conjur_oss_dest_image"
+    podman push "$conjur_oss_dest_image" --tls-verify=false
   fi
 
   announce "Pulling and pushing Nginx image."
@@ -94,10 +94,10 @@ prepare_conjur_oss_cluster() {
   # Push nginx image to openshift repo
   pushd oss/nginx_base
     sed -i -e "s#{{ CONJUR_NAMESPACE_NAME }}#$CONJUR_NAMESPACE_NAME#g" ./proxy/ssl.conf
-    docker build -t $nginx_image .
+    podman build -t $nginx_image .
 
     if [ "${DEV}" = "false" ]; then
-      docker push $nginx_image
+      podman push $nginx_image --tls-verify=false
     fi
   popd
 }
